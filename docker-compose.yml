@@ -1,0 +1,16 @@
+# docker-compose.yml
+version: '3.8' # Docker Compose sürümü
+
+services:
+  # Servisimizin adı
+  web-api:
+    # Bulunduğumuz klasördeki Dockerfile'ı kullanarak imajı inşa et
+    build: .
+    # Container'ın 5000. portunu host makinenin 8000. portuna bağla
+    ports:
+      - "8000:5000"
+    # Container'ın her zaman yeniden başlatılmasını sağla (hata olsa bile)
+    restart: always
+    # Geliştirme aşamasında kod değişikliklerini otomatik yansıtmak için (isteğe bağlı)
+    # volume:
+    #   - .:/app
