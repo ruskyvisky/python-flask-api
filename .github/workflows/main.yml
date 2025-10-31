@@ -1,0 +1,70 @@
+name: CI/CD Pipeline - Docker Publish
+
+on:
+  push:
+
+    branches: [ "main" ]
+  pull_request:
+ 
+    branches: [ "main" ]
+
+permissions:
+  contents: read         
+  packages: write        
+
+env:
+
+  REGISTRY: ghcr.io
+  IMAGE_OWNER: ${{ github.repository_owner }}
+  IMAGE_NAME: flask-api-app
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📦 Kodu Kontrol Et
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Docker Compose ile Ortamı Ayarla
+
+        run: |
+          docker compose build
+          # Servisin hazır olması için kısa bir bekleme (opsiyonel)
+          # docker compose up -d web-api
+
+      - name: 🧪 Testleri Çalıştır (pytest)
+       
+        run: |
+          docker compose run --rm web-api python -m pytest
+       
+
+  publish-image:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && success()
+    needs: build-and-test 
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📦 Kodu Kontrol Et
+        uses: actions/checkout@v4
+
+      - name: 🐳 Docker'a Giriş Yap (GitHub Packages - GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ env.IMAGE_OWNER }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: 🏷️ İmaj Etiketlerini Belirle
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest
+            type=sha,format=short
+
+      - name: 🏗️ Docker İmajını İnşa Et ve Yayınla (Push)
+        uses: docker/build-push-action@v5
+        with:
+          context: . 
+          push: true 
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
